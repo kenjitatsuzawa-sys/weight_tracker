@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>体重管理</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f5f5;--surface:#fff;--surface2:#f9f9f9;
+  --text:#1a1a1a;--text2:#666;--text3:#999;
+  --border:#e5e5e5;--border2:#d0d0d0;
+  --accent:#378ADD;--accent-bg:#e6f1fb;--accent-text:#0C447C;
+  --success:#1D9E75;--success-bg:#e1f5ee;--success-text:#085041;
+  --danger:#D85A30;--danger-bg:#faece7;--danger-text:#4A1B0C;
+  --warning:#BA7517;--warning-bg:#faeeda;
+  --radius:8px;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#1a1a1a;--surface:#252525;--surface2:#2e2e2e;
+    --text:#f0f0f0;--text2:#aaa;--text3:#666;
+    --border:#333;--border2:#444;
+    --accent-bg:#042c53;--accent-text:#85b7eb;
+    --success-bg:#04342c;--success-text:#5dcaa5;
+    --danger-bg:#4a1b0c;--danger-text:#f0997b;
+    --warning-bg:#412402;
+  }
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);-webkit-text-size-adjust:100%}
+.app{max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+.header{background:var(--surface);border-bottom:0.5px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
+.header-icon{font-size:20px}
+.header h1{font-size:17px;font-weight:600;letter-spacing:-0.3px}
+.nav{display:flex;background:var(--surface);border-top:0.5px solid var(--border);position:sticky;bottom:0;z-index:10;padding-bottom:env(safe-area-inset-bottom)}
+.nav-btn{flex:1;padding:10px 4px 8px;border:none;background:none;font-size:10px;color:var(--text3);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;-webkit-tap-highlight-color:transparent}
+.nav-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav-btn.active{color:var(--accent)}
+.page{display:none;flex:1;overflow-y:auto;padding:16px;gap:14px;flex-direction:column;-webkit-overflow-scrolling:touch}
+.page.active{display:flex}
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:16px}
+.card-title{font-size:12px;font-weight:600;color:var(--text3);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:12px}
+/* 今日の体重 */
+.today-center{text-align:center;padding:4px 0 10px}
+.today-num{font-size:56px;font-weight:300;line-height:1;letter-spacing:-2px}
+.today-unit{font-size:20px;color:var(--text2);font-weight:300}
+.today-diff{font-size:13px;margin-top:6px;color:var(--text3);min-height:20px}
+.today-diff.down{color:var(--success)}
+.today-diff.up{color:var(--danger)}
+/* 前回体重 */
+.prev-row{display:flex;align-items:center;justify-content:center;gap:8px;padding:9px 14px;background:var(--surface2);border-radius:var(--radius);border:0.5px solid var(--border);margin-bottom:12px}
+.prev-row span{font-size:13px;color:var(--text2)}
+.prev-row strong{font-size:15px;font-weight:600}
+/* BMI */
+.bmi-wrap{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border-radius:var(--radius);border:0.5px solid var(--border);margin-bottom:12px}
+.bmi-big{text-align:center;min-width:60px}
+.bmi-big .num{font-size:28px;font-weight:600;line-height:1}
+.bmi-big .lbl{font-size:10px;color:var(--text3);margin-top:2px;letter-spacing:0.5px}
+.bmi-sep{width:0.5px;height:44px;background:var(--border)}
+.bmi-detail{flex:1}
+.bmi-cat{font-size:14px;font-weight:600;margin-bottom:2px}
+.bmi-range-lbl{font-size:11px;color:var(--text3);margin-bottom:8px}
+.bmi-scale{height:5px;border-radius:3px;background:linear-gradient(to right,#5DCAA5 0%,#5DCAA5 30%,#378ADD 30%,#378ADD 57%,#EF9F27 57%,#EF9F27 75%,#D85A30 75%);position:relative;overflow:visible}
+.bmi-dot{position:absolute;top:50%;width:11px;height:11px;border-radius:50%;background:var(--text);border:2px solid var(--surface);transform:translate(-50%,-50%);transition:left 0.3s}
+.bmi-scale-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:5px}
+/* 入力 */
+.weight-input{height:52px;width:100%;border:1.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:20px;text-align:center;font-weight:500;margin-bottom:10px;-webkit-appearance:none}
+.weight-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(55,138,221,0.15)}
+.weight-input::placeholder{color:var(--text3);font-weight:300;font-size:16px}
+.btn-record{width:100%;height:50px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:16px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;letter-spacing:0.3px}
+.btn-record:active{opacity:0.85;transform:scale(0.99)}
+/* 進捗 */
+.goal-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.goal-stat{background:var(--surface2);border-radius:var(--radius);padding:12px}
+.goal-stat .lbl{font-size:11px;color:var(--text3);margin-bottom:4px}
+.goal-stat .val{font-size:18px;font-weight:600}
+.goal-stat .val.accent{color:var(--accent)}
+.prog-bar{height:8px;background:var(--surface2);border:0.5px solid var(--border);border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;border-radius:4px;background:var(--accent);transition:width 0.4s}
+.prog-fill.done{background:var(--success)}
+.prog-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-top:6px}
+/* グラフ */
+canvas{display:block}
+/* 記録一覧 */
+.log-list{display:flex;flex-direction:column;gap:8px}
+.log-item{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:12px 14px;display:flex;justify-content:space-between;align-items:center}
+.log-item .date{font-size:13px;color:var(--text2)}
+.log-item .bmi-sm{font-size:11px;color:var(--text3);margin-top:2px}
+.log-item .right{display:flex;align-items:center;gap:8px}
+.log-item .wt{font-size:16px;font-weight:600}
+.badge{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:500}
+.badge.down{background:var(--success-bg);color:var(--success-text)}
+.badge.up{background:var(--danger-bg);color:var(--danger-text)}
+/* 設定 */
+.setting-section{margin-bottom:20px}
+.setting-section:last-of-type{margin-bottom:0}
+.setting-section-title{font-size:12px;font-weight:600;color:var(--text3);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:0.5px solid var(--border)}
+.form-row{margin-bottom:12px}
+.form-row label{display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:6px}
+.form-row input{width:100%;height:44px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:16px;padding:0 14px;-webkit-appearance:none}
+.form-row input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(55,138,221,0.15)}
+.btn-save{width:100%;height:48px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:15px;font-weight:600;cursor:pointer;margin-top:4px}
+.btn-save:active{opacity:0.85}
+.danger-btn{width:100%;height:44px;border:0.5px solid var(--danger);background:none;color:var(--danger);border-radius:var(--radius);font-size:14px;cursor:pointer}
+.danger-btn:active{background:var(--danger-bg)}
+.warn-box{background:var(--warning-bg);border:0.5px solid var(--warning);border-radius:var(--radius);padding:12px;font-size:13px;color:var(--warning)}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3);font-size:14px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <span class="header-icon">⚖️</span>
+    <h1>体重管理</h1>
+  </div>
+
+  <!-- ホーム -->
+  <div class="page active" id="page-home">
+    <div id="setup-warn" style="display:none">
+      <div class="warn-box">「設定」タブから開始体重・目標体重を登録してください。</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">今日の体重</div>
+      <div class="today-center">
+        <div>
+          <span class="today-num" id="today-num">--</span>
+          <span class="today-unit"> kg</span>
+        </div>
+        <div class="today-diff" id="today-diff">今日の体重を記録してください</div>
+      </div>
+
+      <div id="prev-row" class="prev-row" style="display:none">
+        <span>🕐</span>
+        <span>前回 <span id="prev-date"></span></span>
+        <strong id="prev-val"></strong>
+        <span>kg</span>
+      </div>
+
+      <div id="bmi-wrap" class="bmi-wrap" style="display:none">
+        <div class="bmi-big">
+          <div class="num" id="bmi-num">--</div>
+          <div class="lbl">BMI</div>
+        </div>
+        <div class="bmi-sep"></div>
+        <div class="bmi-detail">
+          <div class="bmi-cat" id="bmi-cat"></div>
+          <div class="bmi-range-lbl" id="bmi-range"></div>
+          <div class="bmi-scale">
+            <div class="bmi-dot" id="bmi-dot"></div>
+          </div>
+          <div class="bmi-scale-labels"><span>低体重</span><span>標準</span><span>肥満</span></div>
+        </div>
+      </div>
+
+      <input class="weight-input" type="number" id="input-weight" placeholder="体重を入力 (例: 72.5)" step="0.1" min="20" max="300" inputmode="decimal">
+      <button class="btn-record" onclick="recordWeight()">＋ 記録する</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">目標進捗</div>
+      <div id="progress-area"><div class="empty-state">設定タブで目標を登録してください</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">推移グラフ（直近14日）</div>
+      <canvas id="chart" height="180"></canvas>
+    </div>
+  </div>
+
+  <!-- 記録一覧 -->
+  <div class="page" id="page-log">
+    <div id="log-list" class="log-list"></div>
+  </div>
+
+  <!-- 設定 -->
+  <div class="page" id="page-settings">
+    <div class="card">
+      <div class="setting-section">
+        <div class="setting-section-title">基本情報</div>
+        <div class="form-row">
+          <label>身長 (cm)</label>
+          <input type="number" id="s-height" placeholder="例: 170.0" step="0.1" min="100" max="250" inputmode="decimal">
+        </div>
+      </div>
+      <div class="setting-section">
+        <div class="setting-section-title">体重目標</div>
+        <div class="form-row">
+          <label>開始体重 (kg)</label>
+          <input type="number" id="s-start" placeholder="例: 78.0" step="0.1" min="20" max="300" inputmode="decimal">
+        </div>
+        <div class="form-row">
+          <label>目標体重 (kg)</label>
+          <input type="number" id="s-goal" placeholder="例: 65.0" step="0.1" min="20" max="300" inputmode="decimal">
+        </div>
+        <div class="form-row">
+          <label>目標日 (任意)</label>
+          <input type="date" id="s-date">
+        </div>
+        <button class="btn-save" onclick="saveSettings()">保存する</button>
+      </div>
+    </div>
+    <div class="card" style="border-color:var(--danger)">
+      <div class="setting-section-title" style="color:var(--danger)">データ管理</div>
+      <button class="danger-btn" onclick="clearAll()">すべてのデータを削除</button>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button class="nav-btn active" onclick="goPage('home',this)" aria-label="ホーム">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      ホーム
+    </button>
+    <button class="nav-btn" onclick="goPage('log',this)" aria-label="記録">
+      <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      記録
+    </button>
+    <button class="nav-btn" onclick="goPage('settings',this)" aria-label="設定">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      設定
+    </button>
+  </nav>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const STORE='wt_app_v1';
+let chart=null;
+
+function load(){try{return JSON.parse(localStorage.getItem(STORE))||{settings:{},logs:{}};}catch(e){return{settings:{},logs:{}};}}
+function save(d){localStorage.setItem(STORE,JSON.stringify(d));}
+
+function goPage(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='home')renderHome();
+  if(id==='log')renderLog();
+  if(id==='settings')renderSettings();
+}
+
+function today(){
+  const d=new Date();
+  return d.getFullYear()+'-'+(d.getMonth()+1+'').padStart(2,'0')+'-'+(d.getDate()+'').padStart(2,'0');
+}
+
+function recordWeight(){
+  const val=parseFloat(document.getElementById('input-weight').value);
+  if(isNaN(val)||val<20||val>300){alert('正しい体重を入力してください');return;}
+  const d=load();
+  d.logs[today()]=val;
+  save(d);
+  document.getElementById('input-weight').value='';
+  renderHome();
+  alert('記録しました！');
+}
+
+function getBmiInfo(bmi){
+  if(bmi<18.5)return{cat:'低体重',color:'#085041',range:'18.5未満',pct:bmi/18.5*30};
+  if(bmi<25)return{cat:'標準体重',color:'#0C447C',range:'18.5〜24.9',pct:30+(bmi-18.5)/(25-18.5)*27};
+  if(bmi<30)return{cat:'肥満（1度）',color:'#633806',range:'25.0〜29.9',pct:57+(bmi-25)/5*18};
+  return{cat:'肥満（2度以上）',color:'#4A1B0C',range:'30.0以上',pct:Math.min(97,75+(bmi-30)/10*22)};
+}
+
+function renderHome(){
+  const d=load();
+  const{settings,logs}=d;
+  const keys=Object.keys(logs).sort();
+  const todayKey=today();
+  const todayW=logs[todayKey];
+  const prevKey=keys.filter(k=>k<todayKey).pop();
+  const prevW=prevKey!=null?logs[prevKey]:null;
+
+  document.getElementById('setup-warn').style.display=(!settings.start||!settings.goal)?'block':'none';
+
+  // 今日の体重
+  const numEl=document.getElementById('today-num');
+  const diffEl=document.getElementById('today-diff');
+  if(todayW!=null){
+    numEl.textContent=todayW.toFixed(1);
+    if(prevW!=null){
+      const diff=todayW-prevW;
+      const cls=diff<0?'down':'up';
+      diffEl.textContent='前日比 '+(diff<0?'▼':'▲')+' '+Math.abs(diff).toFixed(1)+' kg';
+      diffEl.className='today-diff '+cls;
+    }else{diffEl.textContent='';diffEl.className='today-diff';}
+  }else{
+    numEl.textContent='--';
+    diffEl.textContent='今日の体重を記録してください';
+    diffEl.className='today-diff';
+  }
+
+  // 前回体重
+  const prevRow=document.getElementById('prev-row');
+  if(prevW!=null){
+    document.getElementById('prev-date').textContent='('+prevKey.slice(5).replace('-','/')+'）';
+    document.getElementById('prev-val').textContent=prevW.toFixed(1);
+    prevRow.style.display='flex';
+  }else{prevRow.style.display='none';}
+
+  // BMI
+  const currentW=todayW!=null?todayW:prevW;
+  const bmiWrap=document.getElementById('bmi-wrap');
+  if(settings.height&&currentW!=null){
+    const h=settings.height/100;
+    const bmi=currentW/(h*h);
+    const info=getBmiInfo(bmi);
+    document.getElementById('bmi-num').textContent=bmi.toFixed(1);
+    const catEl=document.getElementById('bmi-cat');
+    catEl.textContent=info.cat;
+    catEl.style.color=info.color;
+    document.getElementById('bmi-range').textContent='BMI '+info.range;
+    document.getElementById('bmi-dot').style.left=info.pct+'%';
+    bmiWrap.style.display='flex';
+  }else{bmiWrap.style.display='none';}
+
+  // 目標進捗
+  const pa=document.getElementById('progress-area');
+  if(settings.start&&settings.goal){
+    const latest=keys.length?logs[keys[keys.length-1]]:settings.start;
+    const total=Math.abs(settings.start-settings.goal);
+    const done=settings.goal<settings.start?Math.max(0,settings.start-latest):Math.max(0,latest-settings.start);
+    const pct=total>0?Math.min(100,Math.round(done/total*100)):0;
+    const remaining=parseFloat((latest-settings.goal).toFixed(1));
+    let bmiGoalHtml='';
+    if(settings.height){
+      const h=settings.height/100;
+      const bg=(+settings.goal)/(h*h);
+      const bi=getBmiInfo(bg);
+      bmiGoalHtml=`<span style="font-size:11px;color:${bi.color}"> (BMI ${bg.toFixed(1)})</span>`;
+    }
+    let daysLeft='';
+    if(settings.targetDate){
+      const ms=new Date(settings.targetDate)-new Date();
+      const days=Math.ceil(ms/86400000);
+      if(days>0)daysLeft=` · 目標日まで${days}日`;
+    }
+    pa.innerHTML=`
+      <div class="goal-stats">
+        <div class="goal-stat"><div class="lbl">開始体重</div><div class="val">${(+settings.start).toFixed(1)} kg</div></div>
+        <div class="goal-stat"><div class="lbl">目標体重</div><div class="val accent">${(+settings.goal).toFixed(1)} kg${bmiGoalHtml}</div></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:13px;font-weight:600">${pct}% 達成</span>
+        <span style="font-size:12px;color:var(--text2)">${remaining>0?'残り'+remaining+'kg':'🎉 目標達成！'}${daysLeft}</span>
+      </div>
+      <div class="prog-bar"><div class="prog-fill ${pct>=100?'done':''}" style="width:${pct}%"></div></div>`;
+  }else{
+    pa.innerHTML='<div class="empty-state">設定タブで目標を登録してください</div>';
+  }
+
+  renderChart(keys,logs,settings);
+}
+
+function renderChart(keys,logs,settings){
+  const labels=keys.slice(-14);
+  const data=labels.map(k=>logs[k]);
+  const ctx=document.getElementById('chart').getContext('2d');
+  const isDark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+  const gridColor=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)';
+  const tickColor=isDark?'#666':'#aaa';
+  if(chart)chart.destroy();
+  const datasets=[{
+    label:'体重',data,
+    borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.08)',
+    pointBackgroundColor:'#378ADD',pointRadius:4,pointHoverRadius:6,
+    fill:true,tension:0.35,borderWidth:2
+  }];
+  if(settings.goal&&labels.length){
+    datasets.push({label:'目標',data:labels.map(()=>+settings.goal),borderColor:'#1D9E75',borderDash:[5,4],pointRadius:0,borderWidth:1.5,fill:false});
+  }
+  chart=new Chart(ctx,{
+    type:'line',
+    data:{labels:labels.map(l=>l.slice(5)),datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:data.length>0,labels:{boxWidth:12,font:{size:11},color:tickColor,padding:12}}},
+      scales:{
+        x:{grid:{color:gridColor},ticks:{color:tickColor,font:{size:10}}},
+        y:{grid:{color:gridColor},ticks:{color:tickColor,font:{size:10},callback:v=>v+'kg'}}
+      }
+    }
+  });
+}
+
+function renderLog(){
+  const d=load();
+  const keys=Object.keys(d.logs).sort().reverse();
+  const el=document.getElementById('log-list');
+  if(!keys.length){el.innerHTML='<div class="empty-state">まだ記録がありません</div>';return;}
+  const h=d.settings.height?d.settings.height/100:null;
+  el.innerHTML=keys.map((k,i)=>{
+    const w=d.logs[k];
+    const prevKey=keys[i+1];
+    const prevW=prevKey?d.logs[prevKey]:null;
+    let badge='';
+    if(prevW!=null){
+      const diff=w-prevW;
+      const cls=diff<0?'down':'up';
+      badge=`<span class="badge ${cls}">${diff<0?'▼':'▲'} ${Math.abs(diff).toFixed(1)}</span>`;
+    }
+    let bmiSm='';
+    if(h){const bmi=w/(h*h);const info=getBmiInfo(bmi);bmiSm=`<div class="bmi-sm" style="color:${info.color}">BMI ${bmi.toFixed(1)}・${info.cat}</div>`;}
+    const dateStr=k.replace(/(\d{4})-(\d{2})-(\d{2})/,'$1/$2/$3');
+    return `<div class="log-item">
+      <div><div class="date">${dateStr}</div>${bmiSm}</div>
+      <div class="right">${badge}<span class="wt">${w.toFixed(1)} kg</span></div>
+    </div>`;
+  }).join('');
+}
+
+function renderSettings(){
+  const s=(load().settings)||{};
+  if(s.height)document.getElementById('s-height').value=s.height;
+  if(s.start)document.getElementById('s-start').value=s.start;
+  if(s.goal)document.getElementById('s-goal').value=s.goal;
+  if(s.targetDate)document.getElementById('s-date').value=s.targetDate;
+}
+
+function saveSettings(){
+  const height=parseFloat(document.getElementById('s-height').value);
+  const start=parseFloat(document.getElementById('s-start').value);
+  const goal=parseFloat(document.getElementById('s-goal').value);
+  const targetDate=document.getElementById('s-date').value;
+  if(isNaN(start)||isNaN(goal)){alert('開始体重と目標体重を入力してください');return;}
+  if(document.getElementById('s-height').value&&(isNaN(height)||height<100||height>250)){alert('正しい身長を入力してください');return;}
+  const d=load();
+  d.settings={height:isNaN(height)?null:height,start,goal,targetDate};
+  save(d);
+  alert('設定を保存しました！');
+}
+
+function clearAll(){
+  if(confirm('すべてのデータを削除しますか？\nこの操作は取り消せません。')){
+    localStorage.removeItem(STORE);
+    location.reload();
+  }
+}
+
+renderHome();
+</script>
+</body>
+</html>
