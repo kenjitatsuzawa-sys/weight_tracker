@@ -100,6 +100,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Noto Sans JP'
 .empty-state{text-align:center;padding:40px 20px;color:var(--text3);font-size:14px}
 .chart-tab{padding:5px 12px;border-radius:20px;border:0.5px solid var(--border2);background:none;color:var(--text3);font-size:12px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .chart-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* 月別サマリー */
+.month-group{margin-bottom:14px}
+.month-header{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface2);border-radius:var(--radius);border:0.5px solid var(--border);margin-bottom:6px}
+.month-label{font-size:13px;font-weight:600}
+.month-diff{font-size:13px;font-weight:600}
+.month-diff.down{color:var(--success)}
+.month-diff.up{color:var(--danger)}
+.month-diff.flat{color:var(--text3)}
+.month-sub{font-size:11px;color:var(--text3);margin-top:1px}
+/* 削除ボタン */
+.log-item{position:relative}
+.del-btn{width:36px;height:36px;border:none;background:none;color:var(--text3);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:var(--radius);-webkit-tap-highlight-color:transparent;flex-shrink:0}
+.del-btn:active{background:var(--danger-bg);color:var(--danger)}
 </style>
 </head>
 <body>
@@ -108,7 +121,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Noto Sans JP'
     <span>⚖️</span>
     <h1>体重管理</h1>
   </div>
- 
+
   <!-- ホーム -->
   <div class="page active" id="page-home">
     <div id="setup-warn" style="display:none">
@@ -144,12 +157,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Noto Sans JP'
       <input class="weight-input" type="number" id="input-weight" placeholder="体重を入力 (例: 72.5)" step="0.1" min="20" max="300" inputmode="decimal">
       <button class="btn-record" onclick="recordWeight()">＋ 記録する</button>
     </div>
- 
+
     <div class="card">
       <div class="card-title">目標進捗</div>
       <div id="progress-area"><div class="empty-state">設定タブで目標を登録してください</div></div>
     </div>
- 
+
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div class="card-title" style="margin-bottom:0">推移グラフ</div>
@@ -163,12 +176,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Noto Sans JP'
       </div>
     </div>
   </div>
- 
+
   <!-- 記録一覧 -->
   <div class="page" id="page-log">
+    <div id="month-summary"></div>
     <div id="log-list" class="log-list"></div>
   </div>
- 
+
   <!-- 設定 -->
   <div class="page" id="page-settings">
     <div class="card">
@@ -201,7 +215,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Noto Sans JP'
       <button class="danger-btn" onclick="clearAll()">すべてのデータを削除</button>
     </div>
   </div>
- 
+
   <nav class="nav">
     <button class="nav-btn active" onclick="goPage('home',this)" aria-label="ホーム">
       <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -217,17 +231,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Noto Sans JP'
     </button>
   </nav>
 </div>
- 
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 const STORE='wt_app_v1';
 let chart=null;
 let chartRendered=false;
 let chartMode='30d'; // '30d' or 'all'
- 
+
 function load(){try{return JSON.parse(localStorage.getItem(STORE))||{settings:{},logs:{}};}catch(e){return{settings:{},logs:{}};}}
 function save(d){localStorage.setItem(STORE,JSON.stringify(d));}
- 
+
 function goPage(id,btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
@@ -237,12 +251,12 @@ function goPage(id,btn){
   if(id==='log')renderLog();
   if(id==='settings')renderSettings();
 }
- 
+
 function today(){
   const d=new Date();
   return d.getFullYear()+'-'+(d.getMonth()+1+'').padStart(2,'0')+'-'+(d.getDate()+'').padStart(2,'0');
 }
- 
+
 function recordWeight(){
   const val=parseFloat(document.getElementById('input-weight').value);
   if(isNaN(val)||val<20||val>300){alert('正しい体重を入力してください');return;}
@@ -254,14 +268,14 @@ function recordWeight(){
   renderHome();
   alert('記録しました！');
 }
- 
+
 function getBmiInfo(bmi){
   if(bmi<18.5)return{cat:'低体重',color:'#085041',range:'18.5未満',pct:bmi/18.5*30};
   if(bmi<25)return{cat:'標準体重',color:'#0C447C',range:'18.5〜24.9',pct:30+(bmi-18.5)/(25-18.5)*27};
   if(bmi<30)return{cat:'肥満（1度）',color:'#633806',range:'25.0〜29.9',pct:57+(bmi-25)/5*18};
   return{cat:'肥満（2度以上）',color:'#4A1B0C',range:'30.0以上',pct:Math.min(97,75+(bmi-30)/10*22)};
 }
- 
+
 function renderHome(){
   const d=load();
   const{settings,logs}=d;
@@ -270,9 +284,9 @@ function renderHome(){
   const todayW=logs[todayKey];
   const prevKey=keys.filter(k=>k<todayKey).pop();
   const prevW=prevKey!=null?logs[prevKey]:null;
- 
+
   document.getElementById('setup-warn').style.display=(!settings.start||!settings.goal)?'block':'none';
- 
+
   const numEl=document.getElementById('today-num');
   const diffEl=document.getElementById('today-diff');
   if(todayW!=null){
@@ -287,14 +301,14 @@ function renderHome(){
     diffEl.textContent='今日の体重を記録してください';
     diffEl.className='today-diff';
   }
- 
+
   const prevRow=document.getElementById('prev-row');
   if(prevW!=null){
     document.getElementById('prev-date').textContent='('+prevKey.slice(5).replace('-','/')+'）';
     document.getElementById('prev-val').textContent=prevW.toFixed(1);
     prevRow.style.display='flex';
   }else{prevRow.style.display='none';}
- 
+
   const currentW=todayW!=null?todayW:prevW;
   const bmiWrap=document.getElementById('bmi-wrap');
   if(settings.height&&currentW!=null){
@@ -308,7 +322,7 @@ function renderHome(){
     document.getElementById('bmi-dot').style.left=info.pct+'%';
     bmiWrap.style.display='flex';
   }else{bmiWrap.style.display='none';}
- 
+
   const pa=document.getElementById('progress-area');
   if(settings.start&&settings.goal){
     const latest=keys.length?logs[keys[keys.length-1]]:settings.start;
@@ -340,14 +354,14 @@ function renderHome(){
   }else{
     pa.innerHTML='<div class="empty-state">設定タブで目標を登録してください</div>';
   }
- 
+
   // グラフはまだ描画していない時だけ描く（放置中の再描画ループを防ぐ）
   if(!chartRendered){
     renderChart(keys,logs,settings);
     chartRendered=true;
   }
 }
- 
+
 function switchChart(mode){
   chartMode=mode;
   document.getElementById('btn-30d').classList.toggle('active',mode==='30d');
@@ -356,20 +370,20 @@ function switchChart(mode){
   const keys=Object.keys(d.logs).sort();
   renderChart(keys,d.logs,d.settings);
 }
- 
+
 function renderChart(keys,logs,settings){
   const labels=chartMode==='all'?keys:keys.slice(-30);
   const data=labels.map(k=>logs[k]);
   const isDark=window.matchMedia('(prefers-color-scheme:dark)').matches;
   const gridColor=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)';
   const tickColor=isDark?'#666':'#aaa';
- 
+
   // 既存チャートを破棄
   if(chart){chart.destroy();chart=null;}
- 
+
   const canvas=document.getElementById('chart');
   const ctx=canvas.getContext('2d');
- 
+
   const datasets=[{
     label:'体重',data,
     borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.08)',
@@ -379,7 +393,7 @@ function renderChart(keys,logs,settings){
   if(settings.goal&&labels.length){
     datasets.push({label:'目標',data:labels.map(()=>+settings.goal),borderColor:'#1D9E75',borderDash:[5,4],pointRadius:0,borderWidth:1.5,fill:false});
   }
- 
+
   // Y軸の範囲: データと目標値を合わせた最小・最大に余白2kgを設定
   // データが1件以上ある時だけY軸範囲を絞る。なければChart.jsの自動スケールに任せる
   const allValues=data.filter(v=>v!=null);
@@ -387,7 +401,7 @@ function renderChart(keys,logs,settings){
   const hasData=allValues.length>0;
   const yMin=hasData?Math.floor(Math.min(...allValues)-1):undefined;
   const yMax=hasData?Math.ceil(Math.max(...allValues)+2):undefined;
- 
+
   chart=new Chart(ctx,{
     type:'line',
     data:{labels:labels.map(l=>l.slice(5)),datasets},
@@ -410,13 +424,58 @@ function renderChart(keys,logs,settings){
     }
   });
 }
- 
+
+function deleteLog(key){
+  if(!confirm(key.replace(/(\d{4})-(\d{2})-(\d{2})/,'$1/$2/$3')+'の記録を削除しますか？')){return;}
+  const d=load();
+  delete d.logs[key];
+  save(d);
+  chartRendered=false;
+  renderLog();
+}
+
 function renderLog(){
   const d=load();
   const keys=Object.keys(d.logs).sort().reverse();
   const el=document.getElementById('log-list');
-  if(!keys.length){el.innerHTML='<div class="empty-state">まだ記録がありません</div>';return;}
+  const msEl=document.getElementById('month-summary');
+
+  if(!keys.length){
+    el.innerHTML='<div class="empty-state">まだ記録がありません</div>';
+    msEl.innerHTML='';
+    return;
+  }
+
   const h=d.settings.height?d.settings.height/100:null;
+
+  // 月別サマリー計算
+  const byMonth={};
+  keys.slice().reverse().forEach(k=>{
+    const ym=k.slice(0,7); // "2025-07"
+    if(!byMonth[ym])byMonth[ym]=[];
+    byMonth[ym].push({date:k,w:d.logs[k]});
+  });
+  const months=Object.keys(byMonth).sort().reverse();
+  msEl.innerHTML=months.map(ym=>{
+    const items=byMonth[ym];
+    const first=items[0].w;
+    const last=items[items.length-1].w;
+    const diff=last-first;
+    const diffSign=diff<0?'down':diff>0?'up':'flat';
+    const diffStr=diff===0?'±0.0':(diff<0?'▼ ':'▲ ')+Math.abs(diff).toFixed(1)+' kg';
+    const [y,m]=ym.split('-');
+    return `<div class="month-group">
+      <div class="month-header">
+        <div>
+          <div class="month-label">${y}年${parseInt(m)}月</div>
+          <div class="month-sub">${first.toFixed(1)} kg → ${last.toFixed(1)} kg（${items.length}件）</div>
+        </div>
+        <div class="month-diff ${diffSign}">${diffStr}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // 個別ログ（削除ボタン付き）
   el.innerHTML=keys.map((k,i)=>{
     const w=d.logs[k];
     const prevKey=keys[i+1];
@@ -431,11 +490,11 @@ function renderLog(){
     const dateStr=k.replace(/(\d{4})-(\d{2})-(\d{2})/,'$1/$2/$3');
     return `<div class="log-item">
       <div><div class="date">${dateStr}</div>${bmiSm}</div>
-      <div class="right">${badge}<span class="wt">${w.toFixed(1)} kg</span></div>
+      <div class="right">${badge}<span class="wt">${w.toFixed(1)} kg</span><button class="del-btn" onclick="deleteLog('${k}')" aria-label="削除">×</button></div>
     </div>`;
   }).join('');
 }
- 
+
 function renderSettings(){
   const s=(load().settings)||{};
   if(s.height)document.getElementById('s-height').value=s.height;
@@ -443,7 +502,7 @@ function renderSettings(){
   if(s.goal)document.getElementById('s-goal').value=s.goal;
   if(s.targetDate)document.getElementById('s-date').value=s.targetDate;
 }
- 
+
 function saveSettings(){
   const height=parseFloat(document.getElementById('s-height').value);
   const start=parseFloat(document.getElementById('s-start').value);
@@ -457,7 +516,7 @@ function saveSettings(){
   chartRendered=false; // 設定変更後はグラフを再描画
   alert('設定を保存しました！');
 }
- 
+
 function clearAll(){
   if(confirm('すべてのデータを削除しますか？\nこの操作は取り消せません。')){
     localStorage.removeItem(STORE);
@@ -466,7 +525,7 @@ function clearAll(){
     location.reload();
   }
 }
- 
+
 renderHome();
 </script>
 </body>
